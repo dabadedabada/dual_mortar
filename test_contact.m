@@ -90,11 +90,10 @@ for time_ind=1:size(times,2)-1
   %{
   % Normals, centroids and tangents linearizations
   delt_normals_storage = linear_get_normals_centroids(cont_face{1}, cont_face{1}_deltx, normals_storage);
-  
-  % Algorithm 1 linearization
-  [mort_delt_D, mort_delt_M, delt_weight_gap] = linear_dual_mortar_fem(cont_face{1}_deltx, cont_face{2}_deltx,...
-  cont_face{1}, cont_face{2}, clips_storage, normals_storage, delt_normals_storage);
   %}
+
+  % Algorithm 1 linearization
+  Ctilde = linear_dual_mortar_fem(cont_face{1}, cont_face{2}, clips_storage, normals_storage);
 
 end
 

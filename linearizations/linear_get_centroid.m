@@ -1,15 +1,14 @@
-function delt_centroid = linear_get_centroid(cont_face, delt_nod)
-
-switch cont_face.type
-  case 'tria3' ,   center = [1/3,1/3,0]'; % 2D *******************************************
-  case 'quad4' ,   center = [0,0,0]';
-  otherwise   , error('Works only for linear 2D elements (tria3 or quad4).');
+function C0 = linear_get_centroid(cont_face, ele_id)
+% returns 3x3*nN matrix C0, delt_x0 = C0*delt_d
+nN_ele = cont_face.info.nN_ele;
+nN = cont_face.info.nN;
+fe = cont_face.fe;
+C0 = zeros(3,nN*3);
+shapef =  fe.N(fe.Cxi); % Shape funcs at center of isoparametric (reference) element
+glob_id = cont_face.nod(ele_id,:)*3-2; % vector of nN_ele node indexes of element
+for k=1:nN_ele
+  C0(:,glob_id(k):glob_id(k)+2) = eye(3)*shapef(k);
 end
-% Sizes
-nele = cont_face.info.nele;
-shapef = cont_face.fe.N(center);
 
-delt_centroid = zeros(nele,3);
-for i=1:nele
-  delt_centroid(i,:) = shapef'*delt_nod(cont_face.nod(i,:),:);
-end
+
+

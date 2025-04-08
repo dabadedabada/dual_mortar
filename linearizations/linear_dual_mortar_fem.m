@@ -1,5 +1,4 @@
-function [mort_delt_D, mort_delt_M, delt_weight_gap] = linear_dual_mortar_fem(s_delt_x, m_delt_x,...
-  cont_face_s, cont_face_m, clips_storage, normals_storage, delt_normals_storage)
+function Ctilde = linear_dual_mortar_fem(cont_face_s, cont_face_m, clips_storage, normals_storage)
 
 % Sizes
 nele_s = cont_face_s.info.nele;
@@ -38,37 +37,29 @@ for k=1:nele_s
   s.n0 = n0(k,:);
   s.normals = averaged_normals(s.nod,:);
   s.fe = cont_face_s.fe;
-  s.delt_x = s_delt_x(cont_face_s.nod(k,:),:);
-
-  s.delt_averaged_normals = delt_normals_storage.averaged_normals(s.nod,:);
-  s.delt_n0 = delt_normals_storage.n0(k,:);
-  s.delt_x0 = delt_normals_storage.x0(k,:);
-
+  N0 = linear_get_n0(cont_face_s, normals_storage, k);    % get the 3xnN_s matrix for centroid normal
+  C0 = linear_get_centroid(cont_face_s, k);               % get the 3xnN_s matrix for centroid
+  N0 = [zeros(3,3*nN_m), N0]; C0 = [zeros(3,3*nN_m), C0]; % expand the matrices by a master part
+  
   for i=1:nele_m
     if isempty(clips_storage{k,i})
       continue;
     end
 
-    delt_D_tmp = zeros(nN_ele_s,1);
-    delt_M_tmp = zeros(nN_ele_s,nN_ele_m);
-    delt_weight_gap_tmp = zeros(nN_ele_s,1);
-
     m.nod = cont_face_m.nod(i,:);
     m.coo = cont_face_m.coo(m.nod, :);
     m.fe = cont_face_m.fe;
-    m.delt_x = m_delt_x(cont_face_m.nod(i,:),:);
     m.type = cont_face_m.type;
 
     clip = clips_storage{k,i}.vert; clip_origin = clips_storage{k,i}.orig;
     proj_s = clips_storage{k,i}.proj_s; proj_m = clips_storage{k,i}.proj_m;
-    
-    delt_integr_cells = linear_integr_cell(s.coo, m.coo, s.delt_x, m.delt_x, s.x0, s.n0, ...
-      s.delt_n0, s.delt_x0, clip, clip_origin, proj_s, proj_m);
+
+    T_cell = linear_integr_cell(s.coo, m.coo, s.x0, s.n0, N0, C0, clip_origin, proj_s, proj_m, nN_m);
 
     Ae = clips_storage{k,i}.dshpf.Ae; Me = clips_storage{k,i}.dshpf.Me;
     delt_A = linear_get_dual_shapef(s.coo, s.delt_x, s.fe, Ae, Me);
 
-    ncells = size(delt_integr_cells, 1);
+    ncells = size(clip,1);
     clip_centr = mean(clip, 1);
     for j=1:ncells
       curr_cell = [clip_centr; clip(j,:); clip(mod(j, ncells)+1,:)];  % take a triangle segment
