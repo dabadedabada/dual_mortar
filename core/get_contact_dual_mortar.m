@@ -95,7 +95,7 @@ for k=1:nele_s
     
       %plot_points_on_ref_element(s.type, s_proj_gp{i})
     
-      % cell Jacobian (popp A.24)
+      % cell Jacobian (Popp diss A.24)
       J_cell = norm(cross(curr_cell(2,:)-curr_cell(1,:),curr_cell(3,:)-curr_cell(1,:), 2));
       clips_storage{k, i}.Jcell{j} = J_cell;
     
