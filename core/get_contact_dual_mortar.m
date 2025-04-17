@@ -60,6 +60,7 @@ for k=1:nele_s
 
     % Rotate to 2D, clip and rotate back
     [clip, clip_origin] = aux_project_and_clip(s.n0, proj_s, proj_m);
+    [clip, clip_origin] = aux_project_and_clip(s.n0, s.x0, proj_s, proj_m);
     if isempty(clip)
       continue; % if theres no intersection of elements, skip iteration
     end
