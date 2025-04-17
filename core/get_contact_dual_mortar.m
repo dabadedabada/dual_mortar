@@ -31,7 +31,6 @@ end
 n0 = normals_storage.n0;
 centroids = normals_storage.x0;
 
-
 % Algorithm 1 (Popp 3d) 
 clips_storage = cell(nele_s, nele_m);
 
@@ -59,7 +58,6 @@ for k=1:nele_s
     proj_m = project_onto_plane(m.coo, s.x0, s.n0);
 
     % Rotate to 2D, clip and rotate back
-    [clip, clip_origin] = aux_project_and_clip(s.n0, proj_s, proj_m);
     [clip, clip_origin] = aux_project_and_clip(s.n0, s.x0, proj_s, proj_m);
     if isempty(clip)
       continue; % if theres no intersection of elements, skip iteration
@@ -74,11 +72,6 @@ for k=1:nele_s
     % average for center
     clip_centr = mean(clip, 1);
     ncells = size(clip, 1);
-    
-    % Dual shape functions matrices (Me for linearization later)
-    [Ae, Me] = get_dual_shapef(s.coo,s.fe);
-    clips_storage{k, i}.dshpf.Ae = Ae;
-    clips_storage{k, i}.dshpf.Me = Me;
  
     for j=1:ncells
       curr_cell = [clip_centr; clip(j,:); clip(mod(j, ncells)+1,:)];  % take a triangle segment
@@ -99,9 +92,14 @@ for k=1:nele_s
       % cell Jacobian (Popp diss A.24)
       J_cell = norm(cross(curr_cell(2,:)-curr_cell(1,:),curr_cell(3,:)-curr_cell(1,:), 2));
       clips_storage{k, i}.Jcell{j} = J_cell;
+
+      % Dual shape functions matrices (Me for linearization later)
+      [Ae, Me] = get_dual_shapef(s.coo,s.fe);
+      clips_storage{k, i}.dshpf.Ae{j} = Ae;
+      clips_storage{k, i}.dshpf.Me{j} = Me;
     
-      Ns_in_sgp = s.fe.N(s_proj_gp');
-      Nm_in_mgp = m.fe.N(m_proj_gp');
+      Ns_in_sgp = s.fe.N(s_proj_gp(:,1:2)');
+      Nm_in_mgp = m.fe.N(m_proj_gp(:,1:2)');
     
       dshpf_in_sgp = Ae*Ns_in_sgp;
       disc_gapf = dot(Ns_in_sgp'*s.normals, Nm_in_mgp'*m.coo-Ns_in_sgp'*s.coo, 2); % (A9) Popp 3D 
