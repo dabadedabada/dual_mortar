@@ -1,11 +1,13 @@
-function [clip, clip_origin] = aux_project_and_clip(s_n0, proj_s,proj_m)
+function [clip, clip_origin] = aux_project_and_clip(n0, x0, proj_s, proj_m)
 
 nN_s = size(proj_s,1);
 nN_m = size(proj_m,1);
 
-R = rotate_plane(s_n0);
-rot_s = (R * proj_s')';
-rot_m = (R * proj_m')';
+R = rotate_plane(n0);
+rot_s = (R*(proj_s -x0)')'+x0;
+rot_m = (R*(proj_m -x0)')'+x0;
+
+%plot_3d_polygon(rot_m, rot_s);
 
 [X, Y] = polyclip(rot_s(:,1), rot_s(:,2), rot_m(:,1), rot_m(:,2), 1); %clip
 
@@ -66,7 +68,7 @@ for i=1:size(clip_origin, 1)
 end
 
 % rotate intersection back
-clip = (R' * rot_clip')';
+clip = (R' * (rot_clip-x0)')'+x0;
 
 %plot_3d_polygon(proj_s, proj_m, clip);
 
