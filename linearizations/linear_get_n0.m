@@ -13,6 +13,6 @@ n0hat = curr_ele_normals'*shapef;
 for k=1:nN_ele
   Nhat = Nhat + shapef(k)*linear_averaged_normals(cont_face,normals_storage,curr_ele_nod(k));
 end
-N0 = (1/norm(n0hat)-n0hat*n0hat'/norm(n0hat)^3)*Nhat;
+N0 = (eye(3)/norm(n0hat)-n0hat*n0hat'/norm(n0hat)^3)*Nhat;
   
 
