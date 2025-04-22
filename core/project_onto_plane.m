@@ -1,6 +1,9 @@
-function projPoints = project_onto_plane(points, x0, n0)
+function Py = project_onto_plane(y, x0, n0)
     % points are Nx3
-    n0 = n0 / norm(n0);  % Ensure normal is unit length
-    dists = (points - x0) * n0';  % Compute distances along n0
-    projPoints = points - dists .* n0;  % Project points
+    nN_ele = size(y,2);
+    Py = zeros(size(y));
+    for k=1:nN_ele
+      alpha = (y(:,k)- x0)' * n0;  % Compute distances along n0
+      Py(:,k) = y(:,k) - alpha * n0;  % Project points
+    end
 end

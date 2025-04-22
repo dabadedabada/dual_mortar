@@ -3,7 +3,7 @@ function cont_face = init_cont_face(mesh, face)
 
 % Init finite element
 cont_face.type = mesh.bou{face}.type;
-cont_face.fe = fe_init(mesh.bou{face}.type);
+cont_face.fe = fe_init(mesh.bou{face}.type, 7);
 
 % Rows of maps are local (face) indexes, values are global indexes
 cont_face.map.ele = mesh.bou{face}.ele;

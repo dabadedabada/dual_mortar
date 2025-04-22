@@ -1,18 +1,16 @@
-function [clip, clip_origin] = aux_project_and_clip(n0, x0, proj_s, proj_m)
+function [rot_clip, clip_origin] = clipping_2D(rot_s, rot_m)
 
-nN_s = size(proj_s,1);
-nN_m = size(proj_m,1);
-
-R = rotate_plane(n0);
-rot_s = (R*(proj_s -x0)')'+x0;
-rot_m = (R*(proj_m -x0)')'+x0;
+rot_s = rot_s';
+rot_m = rot_m';
+nN_s = size(rot_s,2);
+nN_m = size(rot_m,2);
 
 %plot_3d_polygon(rot_m, rot_s);
 
 [X, Y] = polyclip(rot_s(:,1), rot_s(:,2), rot_m(:,1), rot_m(:,2), 1); %clip
 
 if isempty(X) || isempty(Y)
-  clip = [];  % Return empty if no intersection is found
+  rot_clip = [];  % Return empty if no intersection is found
   clip_origin = [];
   return;
 end
@@ -66,10 +64,7 @@ for i=1:size(clip_origin, 1)
     end
   end
 end
+rot_clip = rot_clip';
 
-% rotate intersection back
-clip = (R' * (rot_clip-x0)')'+x0;
-
-%plot_3d_polygon(proj_s, proj_m, clip);
 
 

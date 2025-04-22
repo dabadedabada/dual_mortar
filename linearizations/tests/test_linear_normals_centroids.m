@@ -1,4 +1,4 @@
-function test_linear_normals_centroids(cont_face)
+function test_linear_normals_centroids(cont_face, d, delt_d)
 % tests linearizations of normals, tangents and centroids
 % input argument is reference configuration
 
@@ -9,10 +9,6 @@ nN_ele = cont_face.info.nN_ele;
 xi_id = randi(nN_ele);
 ele_id = randi(nele);
 nod_id = randi(nN);
-
-err = 10^-6;
-d = rand(nN,3);
-delt_d = rand(nN,3);
 
 cont_face_1 = cont_face;  % cont_face.coo = X
 cont_face_2 = cont_face;
@@ -46,6 +42,8 @@ delt_n0_mat = N0*reshape(delt_d',[3*nN, 1]);
 C0 = linear_get_centroid(cont_face_1, ele_id);
 delt_x0_mat = C0*reshape(delt_d',[3*nN, 1]);
 
+% for greater error threshold the limits at epsilon>10^8 sometimes fail (prop floating point error)
+err = 10^-6;
 for i=4:8
   epsilon = 10^-i;
   
@@ -58,9 +56,9 @@ for i=4:8
   n1 = normals_storage_1.ele_normals{ele_id}(xi_id,:)';
   delt_nje = (n2-n1)/epsilon;
   if (norm(delt_nje-delt_nje_mat) < err)
-     fprintf('For epsilon = %g: Ele normal - Success\n', epsilon);
+     fprintf('For epsilon = %g: Ele normal at ele %d local node %d - Success\n', epsilon, ele_id, xi_id);
   else
-     fprintf('For epsilon = %g: Ele normal - Fail\n', epsilon);
+     fprintf('For epsilon = %g: Ele normal at ele %d local node %d - Fail\n', epsilon, ele_id, xi_id);
   end
   %}
   
@@ -70,9 +68,9 @@ for i=4:8
   n1 = normals_storage_1.sum_normals(nod_id,:)';
   delt_nhatj = (n2-n1)/epsilon;
   if (norm(delt_nhatj-delt_nhatj_mat) < err)
-     fprintf('For epsilon = %g: Sum normal - Success\n', epsilon);
+     fprintf('For epsilon = %g: Sum normal at node %d - Success\n', epsilon, nod_id);
   else
-     fprintf('For epsilon = %g: Sum normal - Fail\n', epsilon);
+     fprintf('For epsilon = %g: Sum normal at node %d - Fail\n', epsilon, nod_id);
   end
   %}
 
@@ -82,9 +80,9 @@ for i=4:8
   n1 = normals_storage_1.averaged_normals(nod_id,:)';
   delt_nj = (n2-n1)/epsilon;
   if (norm(delt_nj-delt_nj_mat) < err)
-     fprintf('For epsilon = %g: Avg normal - Success\n', epsilon);
+     fprintf('For epsilon = %g: Avg normal at node %d - Success\n', epsilon, nod_id);
   else
-     fprintf('For epsilon = %g: Avg normal - Fail\n', epsilon);
+     fprintf('For epsilon = %g: Avg normal at node %d - Fail\n', epsilon, nod_id);
   end
   %}
   % --------- test tangents ------
@@ -93,18 +91,18 @@ for i=4:8
   t11 = normals_storage_1.t1(nod_id,:)';
   delt_t1 = (t12-t11)/epsilon;
   if (norm(delt_t1-delt_t1_mat) < err)
-     fprintf('For epsilon = %g: Tangent 1 - Success\n', epsilon);
+     fprintf('For epsilon = %g: Tangent 1 at node %d - Success\n', epsilon, nod_id);
   else
-     fprintf('For epsilon = %g:  Tangent 1 - Fail\n', epsilon);
+     fprintf('For epsilon = %g:  Tangent 1 at node %d - Fail\n', epsilon, nod_id);
   end
 
   t22 = normals_storage_2.t2(nod_id,:)';
   t21 = normals_storage_1.t2(nod_id,:)';
   delt_t2 = (t22-t21)/epsilon;
   if (norm(delt_t2-delt_t2_mat) < err)
-     fprintf('For epsilon = %g: Tangent 2 - Success\n', epsilon);
+     fprintf('For epsilon = %g: Tangent 2 at node %d - Success\n', epsilon, nod_id);
   else
-     fprintf('For epsilon = %g:  Tangent 2 - Fail\n', epsilon);
+     fprintf('For epsilon = %g:  Tangent 2 at node %d - Fail\n', epsilon, nod_id);
   end
   %}
   % --------------- test n0 -----------------
@@ -113,9 +111,9 @@ for i=4:8
   n1 = normals_storage_1.n0(ele_id,:)';
   delt_n0 = (n2-n1)/epsilon;
   if (norm(delt_n0-delt_n0_mat) < err)
-     fprintf('For epsilon = %g: n0 normal - Success\n', epsilon);
+     fprintf('For epsilon = %g: n0 normal at ele %d - Success\n', epsilon, ele_id);
   else
-     fprintf('For epsilon = %g: n0 normal - Fail\n', epsilon);
+     fprintf('For epsilon = %g: n0 normal at ele %d - Fail\n', epsilon, ele_id);
   end
   
   % -------------- test x0 -----------------
@@ -123,9 +121,9 @@ for i=4:8
   x01 = normals_storage_1.x0(ele_id,:)';
   delt_x0 = (x02-x01)/epsilon;
   if (norm(delt_x0-delt_x0_mat) < err)
-     fprintf('For epsilon = %g: x0 normal - Success\n', epsilon);
+     fprintf('For epsilon = %g: x0 centroid at ele %d - Success\n', epsilon, ele_id);
   else
-     fprintf('For epsilon = %g: x0 normal - Fail\n', epsilon);
+     fprintf('For epsilon = %g: x0 centroid at ele %d - Fail\n', epsilon, ele_id);
   end
 end
 

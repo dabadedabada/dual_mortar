@@ -1,13 +1,14 @@
-function [mort_D, mort_M, weight_gap, clips_storage] = get_contact_dual_mortar(cont_face_s, cont_face_m, normals_storage)
+function [mort_D, mort_M, weight_gap, clips_storage, slave_storage, master_storage] = get_contact_dual_mortar(cf_sl, cf_mast, normals_storage)
 
 % Sizes
-nele_s = cont_face_s.info.nele;
-nele_m = cont_face_m.info.nele;
-nN_ele_s = cont_face_s.info.nN_ele;
-nN_ele_m = cont_face_m.info.nN_ele;
-nN_s = cont_face_s.info.nN;
-nN_m = cont_face_m.info.nN; 
+nele_s = cf_sl.info.nele;
+nele_m = cf_mast.info.nele;
+nN_ele_s = cf_sl.info.nN_ele;
+nN_ele_m = cf_mast.info.nN_ele;
+nN_s = cf_sl.info.nN;
+nN_m = cf_mast.info.nN; 
 
+% ----- choose number of integration points on integration cell -------
 % For quad element or distorted geometry choose high order,
 % here o=7 is pretty accurate (13 points)
 fe_cell = fe_init('tria3', 7);   % Init finite element for cells
@@ -16,108 +17,139 @@ w_gp = fe_cell.QW;               % weights
 n_gp = size(gauss_points, 2);     % number of gp
 N_in_gp = fe_cell.N(gauss_points);  % shape funcs in gauss points
 
-% init D,M,weight_gap
+% init D,M before expanding and weight_gap in slave cont nodes
 D = zeros(nN_s);
 M = zeros(nN_s, nN_m);
 weight_gap = zeros(nN_s,1);
 
 % Averaged normals are normed sums in nodes, so we only hold the sums
-% Need both for linearizations
 sum_normals = normals_storage.sum_normals;
 averaged_normals = zeros(size(sum_normals));
-for i=1:nN_s
-  averaged_normals(i,:) = sum_normals(i,:)/norm(sum_normals(i,:));
+for m=1:nN_s
+  averaged_normals(m,:) = sum_normals(m,:)/norm(sum_normals(m,:));
 end
-n0 = normals_storage.n0;
-centroids = normals_storage.x0;
 
-% Algorithm 1 (Popp 3d) 
+% init storage of clip polygons
 clips_storage = cell(nele_s, nele_m);
+slave_storage = cell(nele_s);
+master_storage = cell(nele_m);
 
-for k=1:nele_s
+% Mortar coupling algorithm 
+for s=1:nele_s
   % Init slave element
-  s.nod = cont_face_s.nod(k,:);
-  s.coo = cont_face_s.coo(s.nod, :);
-  s.x0 = centroids(k,:);
-  s.n0 = n0(k,:);
-  s.normals = averaged_normals(s.nod,:);
-  s.fe = cont_face_s.fe;
+  sl.nod_id = cf_sl.nod(s,:);           % row vec of glob nod indices in cf_sl
+  sl.coo = cf_sl.coo(sl.nod_id, :)';    % mat where each column are coo of nods in s
+  sl.x0 = normals_storage.x0(s,:)';     % 3x1 coo of x0
+  sl.n0 = normals_storage.n0(s,:)';     % 3x1 coo of n0
+  sl.n = averaged_normals(sl.nod_id,:)';% mat where each column is avg normal
+  sl.fe = cf_sl.fe;                     % sl finite element
 
-  proj_s = project_onto_plane(s.coo, s.x0, s.n0); % project onto aux plane
+  % project slave nodes onto aux plan - sl.proj
+  sl.proj = project_onto_plane(sl.coo, sl.x0, sl.n0);
 
-  for i=1:nele_m
+  % Rodriguez's rotation matrix for rot to horizontal plane  
+  sl.R = rotation_matrix(sl.n0);
+  
+  % rotate slave points
+  sl.rot = (sl.R*(sl.proj -sl.x0)) + sl.x0;
+  
+  % Dual shape functions matrices (Me for linearization later)
+  [Ae, Me] = get_dual_shapef(sl.coo, sl.fe);
+
+  slave_storage{s}.R = sl.R;
+  slave_storage{s}.proj =sl.proj;
+  slave_storage{s}.rot = sl.rot;
+  slave_storage{s}.Ae = Ae;
+  slave_storage{s}.Me = Me;
+
+  for m=1:nele_m
     % Init master element
-    m.nod = cont_face_m.nod(i,:);
-    m.coo = cont_face_m.coo(m.nod, :);
-    m.fe = cont_face_m.fe;
+    mast.nod_id = cf_mast.nod(m,:);           % row vec of glob nod indices in cf_mast
+    mast.coo = cf_mast.coo(mast.nod_id, :)';  % mat where each column are coo of nods in m
+    mast.fe = cf_mast.fe;                     % mast finite element
 
     D_tmp = zeros(nN_ele_s);
     M_tmp = zeros(nN_ele_s,nN_ele_m);
     weight_gap_tmp = zeros(nN_ele_s,1);
     
-    proj_m = project_onto_plane(m.coo, s.x0, s.n0);
+    % project mast nodes onto aux plane and rotate to horizontal plane
+    mast.proj = project_onto_plane(mast.coo, sl.x0, sl.n0);
+    mast.rot = (sl.R*(mast.proj -sl.x0)) + sl.x0;
 
-    % Rotate to 2D, clip and rotate back
-    [clip, clip_origin] = aux_project_and_clip(s.n0, s.x0, proj_s, proj_m);
-    if isempty(clip)
+    master_storage{m}.proj = mast.proj;
+    master_storage{m}.rot = mast.rot;
+
+    %plot_3d_polygon(sl.rot', mast.rot');
+
+    % clipping in 2D with the vertex origins
+    [rot_clip, clip_origin] = clipping_2D(sl.proj, mast.proj);
+    if isempty(rot_clip)
       continue; % if theres no intersection of elements, skip iteration
     end
+    rot_centr = mean(rot_clip, 2);
+    % rotate polygon vertices back
+    clip = (sl.R' * (rot_clip-sl.x0)) + sl.x0;
+    clip_centr = (sl.R' * (rot_centr-sl.x0)) + sl.x0;
 
     % Assign to storage for current slave and master element
-    clips_storage{k, i}.vert = clip;
-    clips_storage{k, i}.orig = clip_origin;
-    clips_storage{k, i}.proj_s = proj_s;
-    clips_storage{k, i}.proj_m = proj_m;
+    clips_storage{s, m}.rot_vert = rot_clip;
+    clips_storage{s, m}.vert = clip;
+    clips_storage{s, m}.orig = clip_origin;
+    clips_storage{s, m}.sl.proj = sl.proj;
+    clips_storage{s, m}.mast.proj = mast.proj;
 
-    % average for center
-    clip_centr = mean(clip, 1);
+    % average for clip centroid
+    
+    % ncells is equal to number of clip vertices
     ncells = size(clip, 1);
  
-    for j=1:ncells
-      curr_cell = [clip_centr; clip(j,:); clip(mod(j, ncells)+1,:)];  % take a triangle segment
-      cell_gp = N_in_gp'*curr_cell;    % gp global coordinates on the segment (Popp diss A.30)
+    for cell_id=1:ncells
+      % take a triangle segment
+      cell_vert_coo = [clip_centr, clip(:,cell_id), clip(:,mod(cell_id, ncells)+1)]; % 3x3 [v1,v2,v3]
+      % gp global coordinates on the segment (Popp diss A.30)
+      curr_cell_gp = cell_vert_coo*N_in_gp;  % 3xn_gp  
     
-      % project to slave and master isoparametric element along slave normal n0
-      s_proj_gp = newton_it_for_projgp(s.coo, s.fe, s.n0, cell_gp);  
-      m_proj_gp = newton_it_for_projgp(m.coo, m.fe, s.n0, cell_gp);
+      %plot_points_3d(cell_gp');
+      % project cell gp along n0 to sl and mast surface and find
+      % isoparametric ele coordinates
+      s_proj_gp = newton_it_for_projgp(sl.coo, sl.fe, sl.n0, curr_cell_gp);    % sl   3xn_gp [xi; eta; alpha]
+      m_proj_gp = newton_it_for_projgp(mast.coo, mast.fe, sl.n0, curr_cell_gp);% mast 3xn_gp [xi; eta; beta]
 
-      clips_storage{k, i}.gp.global{j} = cell_gp;
-      clips_storage{k, i}.gp.proj_s{j}.coo = s_proj_gp(:,1:2);
-      clips_storage{k, i}.gp.proj_s{j}.alpha = s_proj_gp(:,3);
-      clips_storage{k, i}.gp.proj_m{j}.coo = m_proj_gp(:,1:2);
-      clips_storage{k, i}.gp.proj_m{j}.alpha = m_proj_gp(:,3);
+      clips_storage{s, m}.gp.sl.proj{cell_id}.coo = s_proj_gp(1:2,:);   % sl   [xi; eta]
+      clips_storage{s, m}.gp.sl.proj{cell_id}.alpha = s_proj_gp(3,:);   % alpha
+      clips_storage{s, m}.gp.mast.proj{cell_id}.coo = m_proj_gp(1:2,:); % mast [xi; eta]
+      clips_storage{s, m}.gp.mast.proj{cell_id}.alpha = m_proj_gp(3,:); % beta
     
       %plot_points_on_ref_element(s.type, s_proj_gp{i})
     
       % cell Jacobian (Popp diss A.24)
-      J_cell = norm(cross(curr_cell(2,:)-curr_cell(1,:),curr_cell(3,:)-curr_cell(1,:), 2));
-      clips_storage{k, i}.Jcell{j} = J_cell;
-
-      % Dual shape functions matrices (Me for linearization later)
-      [Ae, Me] = get_dual_shapef(s.coo,s.fe);
-      clips_storage{k, i}.dshpf.Ae{j} = Ae;
-      clips_storage{k, i}.dshpf.Me{j} = Me;
+      J_cell = norm(cross(cell_vert_coo(:,2)-cell_vert_coo(:,1),cell_vert_coo(:,3)-cell_vert_coo(:,1)));
+      clips_storage{s, m}.Jcell{cell_id} = J_cell;
     
-      Ns_in_sgp = s.fe.N(s_proj_gp(:,1:2)');
-      Nm_in_mgp = m.fe.N(m_proj_gp(:,1:2)');
+      Ns_in_sgp = sl.fe.N(s_proj_gp(1:2,:));   % values of sl shpf at sl proj of gp: nN_ele_s x n_gp
+      Nm_in_mgp = mast.fe.N(m_proj_gp(1:2,:)); % values of mast shpf at mast proj of gp: nN_ele_m x n_gp
     
-      dshpf_in_sgp = Ae*Ns_in_sgp;
-      disc_gapf = dot(Ns_in_sgp'*s.normals, Nm_in_mgp'*m.coo-Ns_in_sgp'*s.coo, 2); % (A9) Popp 3D 
-      % Ns_in_sgp'*s.normals should be normed, as its the n_gp normal ???
+      dshpf_in_sgp = Ae*Ns_in_sgp;             % values of dshpf at sl proj of gp: nN_ele_s x n_gp
+       
+      % outward normals at gp on curr conf sl surf
+      normals_gp = normalize(sl.n*Ns_in_sgp,1);
+      
+      % discrete gaps between curr coo of sl and mast gp proj (A9) Popp 3D
+      disc_gapf = dot(normals_gp, mast.coo*Nm_in_mgp-sl.coo*Ns_in_sgp, 1); % 1 x n_gp 
       
       % Mortar integrals (popp 4.35)
       % local D and M for one element pair (s,m)
-      for g=1:n_gp
-        D_tmp = D_tmp + dshpf_in_sgp(:,g)*Ns_in_sgp(:,g)'*w_gp(g)*J_cell; 
-        M_tmp = M_tmp + dshpf_in_sgp(:,g)*Nm_in_mgp(:,g)'*w_gp(g)*J_cell;
-        weight_gap_tmp = weight_gap_tmp + dshpf_in_sgp(:,g)*disc_gapf(g)*w_gp(g)*J_cell;
+      for gp=1:n_gp
+        D_tmp = D_tmp + dshpf_in_sgp(:,gp)*Ns_in_sgp(:,gp)'*w_gp(gp)*J_cell; 
+        M_tmp = M_tmp + dshpf_in_sgp(:,gp)*Nm_in_mgp(:,gp)'*w_gp(gp)*J_cell;
+        weight_gap_tmp = weight_gap_tmp + dshpf_in_sgp(:,gp)*disc_gapf(gp)*w_gp(gp)*J_cell;
       end
     end
     
     % map the local matrices into the "global" ones( "global" is still based on local nodal indexes on the face)
-    D(s.nod, s.nod) = D(s.nod, s.nod) + D_tmp;
-    M(s.nod, m.nod) = M(s.nod, m.nod) + M_tmp;
-    weight_gap(s.nod) = weight_gap(s.nod) + weight_gap_tmp;
+    D(sl.nod_id, sl.nod_id) = D(sl.nod_id, sl.nod_id) + D_tmp;
+    M(sl.nod_id, mast.nod_id) = M(sl.nod_id, mast.nod_id) + M_tmp;
+    weight_gap(sl.nod_id) = weight_gap(sl.nod_id) + weight_gap_tmp;
   end
 end
 
