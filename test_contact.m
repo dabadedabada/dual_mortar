@@ -85,7 +85,7 @@ for time_ind=1:size(times,2)-1
   normals_storage = get_normals_centroids(cont_face{1});
 
   % Algorithm 1
-  [mort_D, mort_M, weight_gap, clips_storage] = get_contact_dual_mortar(cont_face{1}, cont_face{2}, normals_storage);
+  [mort_D, mort_M, weight_gap, clips_storage, slave_storage, master_storage] = get_contact_dual_mortar(cont_face{1}, cont_face{2}, normals_storage);
 
   % Algorithm 1 linearization
   %Ctilde = linear_dual_mortar_fem(cont_face{1}, cont_face{2}, clips_storage, normals_storage);
