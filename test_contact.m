@@ -8,8 +8,8 @@ addpath("clipper2");
 
 mesh = cell(2,1);
 etype = cell(2,1);
-etype{1} = 'hexa8';
-etype{2} = 'tetr4';
+etype{1} = 'tetr4';
+etype{2} = 'hexa8';
 
 % Create reference configurations X^(1,2), t=0
 mesh{1} = mesh_generator([6,6,1], [3,3,2],etype{1}); 
@@ -20,7 +20,7 @@ mesh{1}.nod.coo=mesh{1}.nod.coo + [0,2,0];
 mesh{1}.nod.coo=mesh{1}.nod.coo + [2,0,0];
 
 % Changes to the geometry
-%mesh{1}.nod.coo(:, 3) = mesh{1}.nod.coo(:, 3) - mesh{1}.nod.coo(:, 1) / 5;
+mesh{1}.nod.coo(:, 3) = mesh{1}.nod.coo(:, 3) - mesh{1}.nod.coo(:, 1) / 5;
 %mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,1), :) = mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,1), :) - 0.5;
 %mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,2), :) = mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,2), :) - 0.5;
 %mesh{2}.nod.coo(mesh{2}.bou{6}.nod(1,2), :) = mesh{2}.nod.coo(mesh{2}.bou{6}.nod(1,2), :) - 0.5;

@@ -2,8 +2,8 @@ function [rot_clip, clip_origin] = clipping_2D(rot_s, rot_m)
 
 rot_s = rot_s';
 rot_m = rot_m';
-nN_s = size(rot_s,2);
-nN_m = size(rot_m,2);
+nN_s = size(rot_s,1);
+nN_m = size(rot_m,1);
 
 %plot_3d_polygon(rot_m, rot_s);
 

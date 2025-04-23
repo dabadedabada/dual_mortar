@@ -31,8 +31,8 @@ end
 
 % init storage of clip polygons
 clips_storage = cell(nele_s, nele_m);
-slave_storage = cell(nele_s);
-master_storage = cell(nele_m);
+slave_storage = cell(nele_s,1);
+master_storage = cell(nele_m,1);
 
 % Mortar coupling algorithm 
 for s=1:nele_s
@@ -82,7 +82,7 @@ for s=1:nele_s
     %plot_3d_polygon(sl.rot', mast.rot');
 
     % clipping in 2D with the vertex origins
-    [rot_clip, clip_origin] = clipping_2D(sl.proj, mast.proj);
+    [rot_clip, clip_origin] = clipping_2D(sl.rot, mast.rot);
     if isempty(rot_clip)
       continue; % if theres no intersection of elements, skip iteration
     end
