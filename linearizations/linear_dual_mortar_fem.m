@@ -1,4 +1,4 @@
-function [mort_Dalg, mort_Malg] = linear_dual_mortar_fem(cf_sl, cf_mast, clips_storage, normals_storage, slave_storage, master_storage)
+function [mort_Dalg, mort_Malg, weight_gap_alg] = linear_dual_mortar_fem(cf_sl, cf_mast, clips_storage, normals_storage, slave_storage, master_storage)
 
 % Sizes
 nele_s = cf_sl.info.nele;
@@ -18,7 +18,7 @@ n_gp = size(gauss_points, 2);     % number of gp
 % init linearizations for D,M,weight_gap
 Dalg = zeros(nN_s, nN_s, 3*(nN_m + nN_s));
 Malg = zeros(nN_s, nN_m, 3*(nN_m + nN_s));
-weight_gap_alg = zeros(nN_s,1);
+weight_gap_alg = zeros(nN_s,3*(nN_m + nN_s));
 
 sum_normals = normals_storage.sum_normals;
 averaged_normals = zeros(size(sum_normals));
@@ -27,12 +27,12 @@ for m=1:nN_s
 end
 
 for s=1:nele_s
-  sl.nod = cf_sl.nod(s,:);
-  sl.coo = cf_sl.coo(sl.nod, :)';
+  sl.nod_id = cf_sl.nod(s,:);
+  sl.coo = cf_sl.coo(sl.nod_id, :)';
   sl.type = cf_sl.type;
   sl.x0 = normals_storage.x0(s,:)';
   sl.n0 = normals_storage.n0(s,:)';
-  sl.normals = averaged_normals(sl.nod,:)';
+  sl.normals = averaged_normals(sl.nod_id,:)';
   sl.fe = cf_sl.fe;
   N0s = linear_get_n0(cf_sl, normals_storage, s);    % get the 3xnN_s matrix for centroid normal
   C0s = linear_get_centroid(cf_sl, s);               % get the 3xnN_s matrix for centroid
@@ -47,20 +47,20 @@ for s=1:nele_s
   Ae = slave_storage{s}.Ae; 
   Me = slave_storage{s}.Me;
 
-  Aalg = linear_get_dual_shapef(sl.coo, sl.nod, sl.fe, Ae, Me, nN_s, nN_ele_s);
+  Aalg = linear_get_dual_shapef(sl.coo, sl.nod_id, sl.fe, Ae, Me, nN_s, nN_ele_s);
   
   for m=1:nele_m
     if isempty(clips_storage{s,m})
       continue;
     end
 
-    mast.nod = cf_mast.nod(m,:);
-    mast.coo = cf_mast.coo(mast.nod, :)';
+    mast.nod_id = cf_mast.nod(m,:);
+    mast.coo = cf_mast.coo(mast.nod_id, :)';
     mast.fe = cf_mast.fe;
     mast.type = cf_mast.type;
 
-    mast.proj = master_storage{s}.proj;
-    mast.rot = master_storage{s}.rot;
+    mast.proj = master_storage{m}.proj;
+    mast.rot = master_storage{m}.rot;
 
     rot_clip = clips_storage{s,m}.rot_vert;
     clip = clips_storage{s,m}.vert; 
@@ -70,11 +70,12 @@ for s=1:nele_s
     
     % linearization of projection to aux plane (P), rotation (Ptilde), 2D clipping (Vtilde) and
     % roation back (V) - ncells x 3 cell of matrices V of cell vertices
-    V = linear_rot_polyg_vert(sl.coo, mast.coo, sl.x0, sl.n0, N0, C0, ...
+    V = linear_rot_polyg_vert(sl.coo, mast.coo, sl.nod_id, mast.nod_id, sl.x0, sl.n0, N0, C0, ...
       clip_origin, sl.proj, mast.proj, sl.rot, mast.rot, nN_m, sl.R, Ralg, rot_clip);
 
     Dalg_loc = zeros(nN_ele_s,nN_ele_s,3*(nN_m + nN_s));
     Malg_loc = zeros(nN_ele_s,nN_ele_m,3*(nN_m + nN_s));
+    weight_gap_alg_loc = zeros(nN_ele_s,3*(nN_m + nN_s));
 
 
     ncells = size(clip,1);
@@ -84,21 +85,35 @@ for s=1:nele_s
       % gp global coordinates on the segment (Popp diss A.30)
       J_cell = clips_storage{s, m}.Jcell{cell_id};
       jalg = linear_cell_Jacobian(cell_vert_coo, V{cell_id,1}, V{cell_id,2}, V{cell_id,3});
+
+      normal_dir_gp = clips_storage{s, m}.n_dir_gp{cell_id};
       for gp=1:n_gp
         Ghat = linear_cell_gp(V{cell_id,1}, V{cell_id,2}, V{cell_id,3}, fe_cell, gp);
         s_proj_gp = clips_storage{s, m}.gp.sl.proj{cell_id}.coo(:,gp);   % sl   [xi; eta]
         alpha = clips_storage{s, m}.gp.sl.proj{cell_id}.alpha(gp);     % alpha
         m_proj_gp = clips_storage{s, m}.gp.mast.proj{cell_id}.coo(:,gp); % mast [xi; eta]
         beta = clips_storage{s, m}.gp.mast.proj{cell_id}.alpha(gp);    % beta (alpha for master)
-        G_s = linear_proj_gp(sl.coo, sl.nod, sl.fe, s_proj_gp, alpha, sl.n0, N0, Ghat, 1, nN_m);
-        G_m = linear_proj_gp(mast.coo, mast.nod, mast.fe, m_proj_gp, beta, sl.n0,N0, Ghat, 2, nN_m);
+        G_s = linear_proj_gp(sl.coo, sl.nod_id, sl.fe, s_proj_gp, alpha, sl.n0, N0, Ghat, 1, nN_m);
+        G_m = linear_proj_gp(mast.coo, mast.nod_id, mast.fe, m_proj_gp, beta, sl.n0,N0, Ghat, 2, nN_m);
         F = linear_dshpf_in_sl_proj_gp(Ae, Aalg, sl.fe, s_proj_gp, G_s, nN_m);
+
+        Nhat = linear_normal_dir_gp(G_s, s_proj_gp, cf_sl, normals_storage, sl.nod_id, nN_m);
+        Ngp = linear_normal_gp(normal_dir_gp(:,gp), Nhat);
+        normal_gp = normal_dir_gp(:,gp)/norm(normal_dir_gp(:,gp));
+
+        Nm_in_mgp = mast.fe.N(m_proj_gp); Ns_in_sgp = sl.fe.N(s_proj_gp);
+        disc_gapf = dot(normal_gp,mast.coo*Nm_in_mgp-sl.coo*Ns_in_sgp);
+        ghat = linear_disc_gapf(Ngp, normal_gp, G_m, G_s, s_proj_gp, m_proj_gp, ...
+          sl.coo, mast.coo, sl.nod_id, mast.nod_id, sl.fe, mast.fe, nN_m);
+        
+        weight_gap_alg_loc = weight_gap_alg_loc + linear_weighted_gap(disc_gapf, w_gp(gp), jalg, J_cell, Ae, s_proj_gp, sl.fe, F, ghat);
         Dalg_loc = Dalg_loc + linear_local_D_mortmat(sl.fe,w_gp(gp),jalg,J_cell,s_proj_gp,G_s);
         Malg_loc = Malg_loc + linear_local_M_mortmat(sl.fe, mast.fe, w_gp(gp),jalg,J_cell,s_proj_gp,m_proj_gp,G_m,Ae,F);
       end  
     end
-    Dalg(sl.nod,sl.nod,:) = Dalg(sl.nod,sl.nod,:) + Dalg_loc;
-    Malg(sl.nod,mast.nod,:) = Malg(sl.nod,mast.nod,:) + Malg_loc;
+    Dalg(sl.nod_id,sl.nod_id,:) = Dalg(sl.nod_id,sl.nod_id,:) + Dalg_loc;
+    Malg(sl.nod_id,mast.nod_id,:) = Malg(sl.nod_id,mast.nod_id,:) + Malg_loc;
+    weight_gap_alg(sl.nod_id,:) = weight_gap_alg(sl.nod_id,:) + weight_gap_alg_loc;
   end
 end
 
