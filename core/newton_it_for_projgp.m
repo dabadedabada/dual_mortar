@@ -5,8 +5,8 @@ function proj_gp = newton_it_for_projgp(coo, fe, n0, x_gp)
 
 n_gp = size(x_gp, 2);
 proj_gp = zeros(3, n_gp);
-tol = 1e-6;
-max_iter = 10;
+tol = 1e-10;
+max_iter = 20;
 
 for gp=1:n_gp
   % starting point n0+x_g, alpha*n0+x_g is the projection from aux plane
