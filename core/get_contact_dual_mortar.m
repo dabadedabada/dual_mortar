@@ -131,18 +131,21 @@ for s=1:nele_s
     
       dshpf_in_sgp = Ae*Ns_in_sgp;             % values of dshpf at sl proj of gp: nN_ele_s x n_gp
        
-      % outward normals at gp on curr conf sl surf
-      normals_gp = normalize(sl.n*Ns_in_sgp,1);
-      
-      % discrete gaps between curr coo of sl and mast gp proj (A9) Popp 3D
-      disc_gapf = dot(normals_gp, mast.coo*Nm_in_mgp-sl.coo*Ns_in_sgp, 1); % 1 x n_gp 
+      % outward normal directions at gp on curr conf sl surf
+      normal_dir_gp = sl.n*Ns_in_sgp;          % normal dir at gp nN_ele_s x n_gp
+      clips_storage{s, m}.n_dir_gp{cell_id} = normal_dir_gp;
       
       % Mortar integrals (popp 4.35)
       % local D and M for one element pair (s,m)
       for gp=1:n_gp
-        D_tmp = D_tmp + dshpf_in_sgp(:,gp)*Ns_in_sgp(:,gp)'*w_gp(gp)*J_cell; 
+        normal_gp = normal_dir_gp(:,gp)/norm(normal_dir_gp(:,gp));
+        % discrete gaps between curr coo of sl and mast gp proj (A9) Popp 3D
+        disc_gapf = dot(normal_gp,mast.coo*Nm_in_mgp(:,gp)-sl.coo*Ns_in_sgp(:,gp));
+
+        %D_tmp = D_tmp + dshpf_in_sgp(:,gp)*Ns_in_sgp(:,gp)'*w_gp(gp)*J_cell; 
+        D_tmp = D_tmp + diag(Ns_in_sgp(:,gp)*w_gp(gp)*J_cell);
         M_tmp = M_tmp + dshpf_in_sgp(:,gp)*Nm_in_mgp(:,gp)'*w_gp(gp)*J_cell;
-        weight_gap_tmp = weight_gap_tmp + dshpf_in_sgp(:,gp)*disc_gapf(gp)*w_gp(gp)*J_cell;
+        weight_gap_tmp = weight_gap_tmp + dshpf_in_sgp(:,gp)*disc_gapf*w_gp(gp)*J_cell;
       end
     end
     
