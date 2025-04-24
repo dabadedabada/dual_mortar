@@ -87,9 +87,12 @@ for s=1:nele_s
       continue; % if theres no intersection of elements, skip iteration
     end
     rot_centr = mean(rot_clip, 2);
+    %plot_points_3d([rot_clip';rot_centr']);
     % rotate polygon vertices back
     clip = (sl.R' * (rot_clip-sl.x0)) + sl.x0;
     clip_centr = (sl.R' * (rot_centr-sl.x0)) + sl.x0;
+
+    %plot_points_3d([clip';clip_centr']);
 
     % Assign to storage for current slave and master element
     clips_storage{s, m}.rot_vert = rot_clip;
@@ -101,11 +104,12 @@ for s=1:nele_s
     % average for clip centroid
     
     % ncells is equal to number of clip vertices
-    ncells = size(clip, 1);
+    ncells = size(clip, 2);
  
     for cell_id=1:ncells
       % take a triangle segment
-      cell_vert_coo = [clip_centr, clip(:,cell_id), clip(:,mod(cell_id, ncells)+1)]; % 3x3 [v1,v2,v3]
+      cell_vert_coo = [clip_centr,clip(:,cell_id), clip(:,mod(cell_id, ncells)+1)]; % 3x3 [v1,v2,v3]
+      %plot_points_3d(cell_vert_coo');
       % gp global coordinates on the segment (Popp diss A.30)
       curr_cell_gp = cell_vert_coo*N_in_gp;  % 3xn_gp  
     

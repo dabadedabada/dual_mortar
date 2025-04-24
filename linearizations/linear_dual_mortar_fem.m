@@ -78,10 +78,11 @@ for s=1:nele_s
     weight_gap_alg_loc = zeros(nN_ele_s,3*(nN_m + nN_s));
 
 
-    ncells = size(clip,1);
+    ncells = size(clip,2);
     for cell_id=1:ncells
       % take a triangle segment
-      cell_vert_coo = [clip_centr, clip(:,cell_id), clip(:,mod(cell_id, ncells)+1)]; % 3x3 [v1,v2,v3]
+      cell_vert_coo = [clip_centr,clip(:,cell_id), clip(:,mod(cell_id, ncells)+1)]; % 3x3 [v1,v2,v3]
+      
       % gp global coordinates on the segment (Popp diss A.30)
       J_cell = clips_storage{s, m}.Jcell{cell_id};
       jalg = linear_cell_Jacobian(cell_vert_coo, V{cell_id,1}, V{cell_id,2}, V{cell_id,3});
