@@ -16,5 +16,5 @@ elseif (sl_or_m == 2)
   con_id = nod_id*3-2;
 end
 S(:,con_id:con_id+2) = eye(3);
-P = S - (n0*n0')*(S-C0) + ((n0'*(coo-x0))*eye(3)-(coo-x0)*n0')*N0;
+P = S - (n0*n0')*(S-C0) - ((n0'*(coo-x0))*eye(3)+n0*(coo-x0)')*N0;
 
