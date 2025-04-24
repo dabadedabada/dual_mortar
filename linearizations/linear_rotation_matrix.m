@@ -34,21 +34,24 @@ E_skew(1,3,:) = e_y';
 E_skew(2,1,:) = e_z';
 E_skew(2,3,:) = -e_x';
 E_skew(3,1,:) = -e_y';
-E_skew(1,2,:) = e_x';
+E_skew(3,2,:) = e_x';
 
 
-Rhat = (eye(3)/norm(rhat)-rhat*rhat'*norm(rhat)^(-3))*N0(3,:);
+Rhat = (eye(3)/norm(rhat)-rhat*rhat'*norm(rhat)^(-3))*skew_mat(e_z)'*N0;
 
-Ralg1 = (1-n0(3))*(pagemtimes(E,r') + pagemtimes(r, permute(E, [2, 1, 3])))*Rhat;
+Ralg1_temp = (1-n0(3))*(pagemtimes(E,r') + pagemtimes(r, permute(E, [2, 1, 3])));
+Ralg1 = pagemtimes(permute(Ralg1_temp,[1,3,2]),Rhat);
+Ralg1 = permute(Ralg1,[1,3,2]);
+
 temp = eye(3) - r*r' - skew_mat(r)*n0(3)/sqrt(1-n0(3)*n0(3));
 Ralg2 = zeros(3,3,size(N0,2));
-Ralg3 = zeros(3,3,size(N0,2));
 for i=1:3
   for j=1:3
     Ralg2(i,j,:) = temp(i,j)*N0(3,:);
-    Ralg3(i,j,:) = sqrt(1-n0(3)*n0(3))*E_skew(i,j,:)*Rhat;
   end
 end
+Ralg3_temp = pagemtimes(permute(E_skew,[1,3,2])*sqrt(1-n0(3)*n0(3)),Rhat);
+Ralg3 = permute(Ralg3_temp,[1,3,2]);
 Ralg = Ralg1 + Ralg2 +Ralg3;
 
 
