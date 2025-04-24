@@ -16,6 +16,6 @@ end
 
 J = newton_it_J(coo, n0, fe, proj_gp_coo);
 
-G = J^(-1)*(Gtilde - alpha*N0-Ghat);
+G = -J^(-1)*(Gtilde - alpha*N0-Ghat);
 
 
