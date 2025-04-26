@@ -5,12 +5,11 @@ addpath("plot");
 addpath("core_matfem");
 addpath(genpath("linearizations"));
 addpath("clipper2");
-addpath("mtimesx");
 
 
 mesh = cell(2,1);
 etype = cell(2,1);
-etype{1} = 'hexa8';
+etype{1} = 'tetr4';
 etype{2} = 'hexa8';
 
 % Create reference configurations X^(1,2), t=0
