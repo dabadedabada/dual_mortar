@@ -6,25 +6,29 @@ addpath("core_matfem");
 addpath(genpath("linearizations"));
 addpath("clipper2");
 
-
-mesh = cell(2,1);
+mesh  = cell(2,1);
 etype = cell(2,1);
-etype{1} = 'tetr4';
-etype{2} = 'hexa8';
+etype{1} = 'hexa8';
+etype{2} = 'hexa8'; %'tetr4';
 
 % Create reference configurations X^(1,2), t=0
-mesh{1} = mesh_generator([6,6,1], [3,3,2],etype{1}); 
+mesh{1} = mesh_generator([7,7,2], [2,2,2],etype{1});
 mesh{2} = mesh_generator([9,9,1], [3,3,2],etype{2});
 
-mesh{1}.nod.coo=mesh{1}.nod.coo + [0,0,3];
-mesh{1}.nod.coo=mesh{1}.nod.coo + [0,2,0];
-mesh{1}.nod.coo=mesh{1}.nod.coo + [2,0,0];
+%mesh{1}.nod.coo=mesh{1}.nod.coo + [0,0,1.1];
+%mesh{1}.nod.coo=mesh{1}.nod.coo + [0.5,1.5,0];
 
-% Changes to the geometry
-mesh{1}.nod.coo(:, 3) = mesh{1}.nod.coo(:, 3) - mesh{1}.nod.coo(:, 1) / 5;
-%mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,1), :) = mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,1), :) - 0.5;
-%mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,2), :) = mesh{1}.nod.coo(mesh{1}.bou{5}.nod(1,2), :) - 0.5;
-%mesh{2}.nod.coo(mesh{2}.bou{6}.nod(1,2), :) = mesh{2}.nod.coo(mesh{2}.bou{6}.nod(1,2), :) - 0.5;
+mesh{1}.nod.coo = mesh{1}.nod.coo + [-3.5,-3.5,0 ];
+mesh{2}.nod.coo = mesh{2}.nod.coo + [-4.5,-4.5,0 ];
+if false
+  mesh{1}.nod.coo = mesh{1}.nod.coo + [0,0,1.1];
+else
+  tmp = 4;
+  d  = tmp - mesh{1}.nod.coo(:,3);
+  al = atan2(mesh{1}.nod.coo(:,1),tmp-(0*mesh{1}.nod.coo(:,3)+min(mesh{1}.nod.coo(:,3))));
+  mesh{1}.nod.coo = [d.*sin(al) mesh{1}.nod.coo(:,2)  tmp-d.*cos(al)+1.1];
+end
+
 
 %plot_meshes(mesh);
 
@@ -50,21 +54,19 @@ normals_storage = get_normals_centroids(cont_face{1});
   
 z = ones(3*nN_s,1);
 err = 10^-4;
-for i=8:14
-  for j=1:4
+epsilon = 10^-8;
+for i=1:3*(nN_s+nN_m)
     cont_face_2 = cont_face;
     delt_d_c = zeros(3*nN_m +3*nN_s, 1);
-    delt_di = 1e-6*rand(3,1);
-    random_id = randi(nN_m +nN_s);
-    delt_d_c(random_id*3-2:random_id*3) = delt_di;
+    %random_id = randi(nN_m +nN_s);
+    delt_d_c(i) = 0.001;
     delt_d_s = reshape(delt_d_c(3*nN_m+1:end),3,nN_s)';
     delt_d_m = reshape(delt_d_c(1:3*nN_m),3,nN_m)';
   
-    
     delt_Dz_mat = squeeze(pagemtimes(mort_Dalg,z))*delt_d_c;
     delt_Mz_mat = squeeze(pagemtimes(permute(mort_Malg, [2, 1, 3]),z))*delt_d_c;
     delt_wgap_mat = weight_gap_alg*delt_d_c;
-    epsilon = 10^-i;
+
     cont_face_2{1}.coo = cont_face{1}.coo + epsilon*delt_d_s;   % f(x + epsilon*delt_d)
     cont_face_2{2}.coo = cont_face{2}.coo + epsilon*delt_d_m;
     
@@ -73,6 +75,7 @@ for i=8:14
     delt_Dz = (mort_D_2*z-mort_D*z)/epsilon;
     delt_Mz = (mort_M_2'*z-mort_M'*z)/epsilon;
     delt_wgap = (weight_gap_2-weight_gap)/epsilon;
+    fprintf('DOF: %d\n', i);
     if (norm(delt_Dz-delt_Dz_mat) < err)
        fprintf('For epsilon = %g: Dz           - Success - with difference of dir derivatives %g \n', epsilon, norm(delt_Dz-delt_Dz_mat));
     else
@@ -88,8 +91,6 @@ for i=8:14
     else
        fprintf('For epsilon = %g: weighted_gap - Fail    - with difference of dir derivatives %g \n', epsilon, norm(delt_wgap-delt_wgap_mat));
     end
-  end
-
 end
 
 %{
