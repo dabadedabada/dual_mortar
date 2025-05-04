@@ -1,6 +1,6 @@
-function [t1,t2] = get_tangents(cont_face, averaged_normals)
+function [t1,t2] = get_tangents(averaged_normals)
 
-nN = cont_face.info.nN; % Number of Nodes on the face
+nN = size(averaged_normals,1); % Number of Nodes on the face
 t1 = zeros(nN, 3);
 t2 = zeros(nN, 3);
 

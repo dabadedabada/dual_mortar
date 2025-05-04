@@ -26,7 +26,7 @@ rot_clip(:, 1) = X{1}; rot_clip(:, 2) = Y{1}; rot_clip(:, 3) = rot_s(1,3);
 t_id1 = 0; t_id2 = 0; t_id3 = 0;
 smallest1 =5; smallest2=5; smallest3=5;
 nvert = size(rot_clip,1);
-tol = 1e-8; % Small tolerance for numerical precision
+tol = 1e-6; % Small tolerance for numerical precision
 for i = 1:nvert
   for j=1:nN_ele_s
     if (norm(rot_clip(i,1:2)-rot_s(j,1:2)) < tol)

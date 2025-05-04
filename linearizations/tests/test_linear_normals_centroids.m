@@ -247,7 +247,7 @@ delt_dshpf_in_sgp_mat = F*delt_d_c;
 
 %-------------------------------------------------------------------------------%
 % for greater error threshold the limits at epsilon>10^8 sometimes fail (prop floating point error)
-tol = 10^-2;
+tol = 10^-6;
 for i=6:7
   epsilon = 10^-i;
   

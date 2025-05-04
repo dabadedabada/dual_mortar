@@ -8,7 +8,7 @@ averaged_normals = zeros(size(sum_normals));
 for i=1:nN
   averaged_normals(i,:) = sum_normals(i,:)/norm(sum_normals(i,:));
 end
-[t1,t2] = get_tangents(cont_face, averaged_normals);
+[t1,t2] = get_tangents(averaged_normals);
 
 normals_storage.ele_normals = ele_normals;
 normals_storage.sum_normals = sum_normals;
