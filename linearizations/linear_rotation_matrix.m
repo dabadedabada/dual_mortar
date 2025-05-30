@@ -8,7 +8,7 @@ r = rhat / norm(rhat);
 % Compute rotation angle
 Ralg = zeros(3,3,size(N0,2));
 % Check if rotation was needed
-if norm(rhat) < 1e-8 
+if norm(rhat) < 1e-6
   Ralg(1,1,:) = N0(3,:);
   Ralg(2,2,:) = N0(3,:); 
   Ralg(3,3,:) = N0(3,:); 

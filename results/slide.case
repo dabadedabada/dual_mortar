@@ -1,0 +1,20 @@
+#Date
+# EnSight Gold Model
+
+FORMAT
+type:                   ensight gold
+
+GEOMETRY
+model:                  slide.geo
+
+VARIABLES
+vector      per node:       1 1 Displacement slide_Displacement.Nvec***
+tensor symm per element:    1 1 Stress slide_Stress.Eten***
+TIME
+time set:              1
+number of steps:       21
+filename start number: 0
+filename increment:    1
+time values: 0 5.000000e-02 1.000000e-01 1.500000e-01 2.000000e-01 2.500000e-01 3.000000e-01 3.500000e-01 4.000000e-01 4.500000e-01
+ 5.000000e-01 5.500000e-01 6.000000e-01 6.500000e-01 7.000000e-01 7.500000e-01 8.000000e-01 8.500000e-01 9.000000e-01 9.500000e-01
+ 1

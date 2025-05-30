@@ -1,4 +1,4 @@
-function [rot_clip, clip_origin] = clipping_2D(rot_s, rot_m)
+function [rot_clip, clip_origin] = clipping_2D(rot_s, rot_m, x0)
 
 rot_s = rot_s';
 rot_m = rot_m';
@@ -6,19 +6,36 @@ nN_ele_s = size(rot_s,1);
 nN_ele_m = size(rot_m,1);
 
 %plot_3d_polygon(rot_m, rot_s);
-
+%{
 [X, Y] = polyclip(rot_s(:,1), rot_s(:,2), rot_m(:,1), rot_m(:,2), 1); %clip
-
 if isempty(X) || isempty(Y)
   rot_clip = [];  % Return empty if no intersection is found
   clip_origin = [];
   return;
 end
-
 % take the clipped intersection and give it 3rd dim
 rot_clip = zeros(size(X{1},1), 3);
 clip_origin = zeros(size(X{1},1), 5);
 rot_clip(:, 1) = X{1}; rot_clip(:, 2) = Y{1}; rot_clip(:, 3) = rot_s(1,3);
+%}
+
+poly1 = polyshape(rot_s(:,1)',rot_s(:,2)');
+poly2 = polyshape(rot_m(:,1)',rot_m(:,2)');
+polyout = intersect(poly1,poly2);
+if isempty(polyout.Vertices)
+  rot_clip = [];  % Return empty if no intersection is found
+  clip_origin = [];
+  return;
+end
+
+% intersect returns vertices in clockwise orienation, so flip them
+% take the clipped intersection and give it 3rd dim
+rot_clip = zeros(size(polyout.Vertices,1), 3);
+clip_origin = zeros(size(polyout.Vertices,1), 5);
+rot_clip(:, 1:2) = [polyout.Vertices(1,:); flipud(polyout.Vertices(2:end,:))]; 
+% new z coordinate
+rot_clip(:, 3) = mean([rot_s(:,3);rot_m(:,3)]);
+
 
 
 % need origin of vertices for linearization, look Popp 3d Figure A1
@@ -90,6 +107,7 @@ if smallest1<5
 end
 rot_clip = circshift(rot_clip,nvert-target_index+1,1);
 clip_origin = circshift(clip_origin,nvert-target_index+1,1);
+
 rot_clip = rot_clip';
 
 

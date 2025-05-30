@@ -32,7 +32,7 @@ end
 % init storage of clip polygons
 clips_storage = cell(nele_s, nele_m);
 slave_storage = cell(nele_s,1);
-master_storage = cell(nele_m,1);
+master_storage = cell(nele_s, nele_m);
 
 % Mortar coupling algorithm 
 for s=1:nele_s
@@ -52,10 +52,11 @@ for s=1:nele_s
   
   % rotate slave points
   sl.rot = (sl.R*(sl.proj -sl.x0)) + sl.x0;
+  %sl.rot = sl.R*sl.proj + (eye(3)-sl.R)*sl.x0;
   
   % Dual shape functions matrices (Me for linearization later)
   [Ae, Me] = get_dual_shapef(sl.coo, sl.fe);
-
+  
   slave_storage{s}.R = sl.R;
   slave_storage{s}.proj =sl.proj;
   slave_storage{s}.rot = sl.rot;
@@ -75,9 +76,10 @@ for s=1:nele_s
     % project mast nodes onto aux plane and rotate to horizontal plane
     mast.proj = project_onto_plane(mast.coo, sl.x0, sl.n0);
     mast.rot = (sl.R*(mast.proj -sl.x0)) + sl.x0;
+    %mast.rot = sl.R*mast.proj + (eye(3)-sl.R)*sl.x0;
 
-    master_storage{m}.proj = mast.proj;
-    master_storage{m}.rot = mast.rot;
+    master_storage{s,m}.proj = mast.proj;
+    master_storage{s,m}.rot = mast.rot;
 
     %plot_3d_polygon(sl.rot', mast.rot');
 
@@ -98,8 +100,6 @@ for s=1:nele_s
     clips_storage{s, m}.rot_vert = rot_clip;
     clips_storage{s, m}.vert = clip;
     clips_storage{s, m}.orig = clip_origin;
-    clips_storage{s, m}.sl.proj = sl.proj;
-    clips_storage{s, m}.mast.proj = mast.proj;
 
     % average for clip centroid
     

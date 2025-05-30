@@ -48,6 +48,13 @@ for s=1:nele_s
   Me = slave_storage{s}.Me;
 
   Aalg = linear_get_dual_shapef(sl.coo, sl.nod_id, sl.fe, Ae, Me, nN_s, nN_ele_s);
+
+  sl_rotP_alg = cell(nN_ele_s,1);
+  for k=1:nN_ele_s
+    P = linear_project_onto_plane(sl.coo(:,k), sl.nod_id(k), sl.x0, sl.n0, N0, C0, 1, nN_m);
+    sl_rotP_alg{k} = linear_rotate_points(sl.R, Ralg, sl.proj(:,k), P, sl.x0, C0);  
+  end
+  
   
   for m=1:nele_m
     if isempty(clips_storage{s,m})
@@ -59,8 +66,8 @@ for s=1:nele_s
     mast.fe = cf_mast.fe;
     mast.type = cf_mast.type;
 
-    mast.proj = master_storage{m}.proj;
-    mast.rot = master_storage{m}.rot;
+    mast.proj = master_storage{s,m}.proj;
+    mast.rot = master_storage{s,m}.rot;
 
     rot_clip = clips_storage{s,m}.rot_vert;
     clip = clips_storage{s,m}.vert; 
@@ -70,8 +77,29 @@ for s=1:nele_s
     
     % linearization of projection to aux plane (P), rotation (Ptilde), 2D clipping (Vtilde) and
     % roation back (V) - ncells x 3 cell of matrices V of cell vertices
-    V = linear_rot_polyg_vert(sl.coo, mast.coo, sl.nod_id, mast.nod_id, sl.x0, sl.n0, N0, C0, ...
-      clip_origin, sl.proj, mast.proj, sl.rot, mast.rot, nN_m, sl.R, Ralg, rot_clip);
+
+    mast_rotP_alg = cell(nN_ele_m,1);
+    for l=1:nN_ele_m
+      P = linear_project_onto_plane(mast.coo(:,l), mast.nod_id(l), sl.x0, sl.n0, N0, C0, 2, nN_m);
+      mast_rotP_alg{l} = linear_rotate_points(sl.R, Ralg, mast.proj(:,k), P, sl.x0, C0);
+    end
+
+    clip_Vtilde = linear_clipping_2D(clip_origin, sl_rotP_alg, mast_rotP_alg, sl.rot, mast.rot);
+    V0tilde = linear_polygon_centroid(clip_Vtilde);
+
+    % create integration cells
+    % matrix has 3 matrices of vertices on cell
+    n_vert = length(clip_Vtilde);
+    V = cell(n_vert,3);
+    for v=1:n_vert
+      V{v,1} = linear_reverse_rotate_points(sl.R, Ralg, sl.x0, C0, rot_centr, V0tilde);
+      V{v,2} = linear_reverse_rotate_points(sl.R, Ralg, sl.x0, C0, rot_clip(:,v), clip_Vtilde{v});
+      V{v,3} = linear_reverse_rotate_points(sl.R, Ralg, sl.x0, C0, rot_clip(:,mod(v, n_vert)+1), clip_Vtilde{mod(v, n_vert)+1});
+    end
+
+
+    %V = linear_rot_polyg_vert(sl.coo, mast.coo, sl.nod_id, mast.nod_id, sl.x0, sl.n0, N0, C0, ...
+    %  clip_origin, sl.proj, mast.proj, sl.rot, mast.rot, nN_m, sl.R, Ralg, rot_clip);
 
     Dalg_loc = zeros(nN_ele_s,nN_ele_s,3*(nN_m + nN_s));
     Malg_loc = zeros(nN_ele_s,nN_ele_m,3*(nN_m + nN_s));

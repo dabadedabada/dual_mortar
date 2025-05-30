@@ -235,11 +235,7 @@ for n = 1:timestepping.steps
     % update displacement
     u{1} = u{1} + du{1};
     u{2} = u{2} + du{2};
-    %export_ensight_result(     ensight_name, reshape(u{1}              ,[],1), struct(  'type','nod.vec'   ,'eletype',mesh{1}.ele.type,'name','Displacement'),sprintf('%03d',n+k-1)    );
-    %export_ensight_result_add( ensight_name, reshape(u{2}              ,[],1), struct(  'type','nod.vec'   ,'eletype',mesh{2}.ele.type,'name','Displacement'),sprintf('%03d',n+k-1),3,1);
-    %export_ensight_result(     ensight_name, reshape(bypr{1}.ele.sigma',[],1), struct(  'type','ele.tensym','eletype',mesh{1}.ele.type,'name','Stress'      ),sprintf('%03d',n+k-1)    );
-    %export_ensight_result_add( ensight_name, reshape(bypr{2}.ele.sigma',[],1), struct(  'type','ele.tensym','eletype',mesh{2}.ele.type,'name','Stress'      ),sprintf('%03d',n+k-1),3,1);
-
+    
     % add d^k+1 to cont_face coordinates
     cont_face{1}.coo = mesh{1}.nod.coo(cont_face{1}.map.nod,:) + reshape(u{1}(idx_s_glob),3,[])';
     cont_face{2}.coo = mesh{2}.nod.coo(cont_face{2}.map.nod,:) + reshape(u{2}(idx_m_glob-3*mesh{1}.info.nodcount),3,[])';
@@ -250,35 +246,6 @@ for n = 1:timestepping.steps
     % Algorithm 1 - for current configuration with d^k+1
     [mort_D, mort_M, weight_gap, clips_storage, slave_storage, master_storage] = get_contact_dual_mortar(cont_face{1}, cont_face{2}, normals_storage);
     [mort_Dalg, mort_Malg, weight_gap_alg] = linear_dual_mortar_fem(cont_face{1}, cont_face{2}, clips_storage, normals_storage, slave_storage, master_storage);
-    
-    weight_gap_dif = zeros(size(weight_gap_alg));
-    epps = 10^-6;
-
-    for ni=1:cont_face{1}.info.nN
-      for di=1:3
-        i = 3*(ni-1) + di + 3*cont_face{2}.info.nN;
-        cont_face_s = cont_face{1};
-        cont_face_s.coo(ni,di) = cont_face_s.coo(ni,di)+epps*1;
-        normals_storage_ = get_normals_centroids(cont_face_s);
-        [~, ~, weight_gapi, ~, ~, ~] = get_contact_dual_mortar(cont_face_s, cont_face{2}, normals_storage_);
-        weight_gap_dif(:,i) = (weight_gapi - weight_gap)/epps;
-      end
-    end
-    for ni=1:cont_face{2}.info.nN
-      for di=1:3
-        i = 3*(ni-1) + di;
-        cont_face_m = cont_face{2};
-        cont_face_m.coo(ni,di) = cont_face_m.coo(ni,di)+epps*1;
-        [~, ~, weight_gapi, ~, ~, ~] = get_contact_dual_mortar(cont_face{1}, cont_face_m, normals_storage);
-        weight_gap_dif(:,i) = (weight_gapi - weight_gap)/epps;
-      end
-    end
-    
-    tmp_normals = mat2cell(normals_storage.averaged_normals,ones(size(normals_storage.averaged_normals,1),1),3);
-    tmp_normals = blkdiag(tmp_normals{:});
-    %mort_M = mort_D\mort_M;
-    %mort_D = mort_D\mort_D;
-    test_wgap = tmp_normals*(mort_D*reshape(cont_face{1}.coo',[],1) - mort_M*reshape(cont_face{2}.coo',[],1));
 
     [new_activ_loc,new_inact_loc] = find_new_activ_inactiv(weight_gap, compl_param, z, normals_storage);
 

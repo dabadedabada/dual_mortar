@@ -13,8 +13,9 @@ r = rhat / norm(rhat);
 theta = acos(dot(n0, target_normal));
 
 % Check if the n0 is already aligned
-if norm(rhat) < 1e-8
+if norm(rhat) < 1e-6
   R = cos(theta)*eye(3); % Identity if no rotation needed
+  %R = eye(3);
 else
   % Rodrigues' rotation formula
   R = r*r' + cos(theta)*(eye(3)-r*r') + sin(theta) * skew_mat(r);
