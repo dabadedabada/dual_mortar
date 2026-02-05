@@ -29,7 +29,7 @@ else
   mesh{1}.nod.coo = [d.*sin(al)-1 mesh{1}.nod.coo(:,2)  tmp-d.*cos(al)+1.01];
 end
 
-plot_meshes(mesh);
+%plot_meshes(mesh);
 
 % Init contact faces
 cont_face = cell(2,1);
@@ -66,7 +66,7 @@ for s=1:cont_face{1}.info.nele
   fprintf('Element normal directions: %g\n',max(reshape(abs(Dn_lim-Dn_alg),[],1)));
 end
 %}
-%{
+
 % --------------- tangents -------------------------------%
 Dt1_alg = zeros(3*nN_s, 3*nN_s); Dt2_alg = zeros(3*nN_s, 3*nN_s);
 Dt1_lim = zeros(size(Dt1_alg)); Dt2_lim = zeros(size(Dt1_alg));
@@ -84,7 +84,7 @@ for i=1:nN_s
 end
 fprintf('t1: %g\n',max(reshape(abs(Dt1_alg-Dt1_lim),[],1)));
 fprintf('t2: %g\n',max(reshape(abs(Dt2_alg-Dt2_lim),[],1)));
-%}
+
 %{
 % -------------- element centroids, centroid normals ------------------------------%
 Dn_alg = zeros(3*cont_face{1}.info.nele, 3*nN_s); Dn_lim = zeros(size(Dn_alg));
@@ -275,4 +275,60 @@ fprintf('Difference between dir derivative calculated algebraically and with fin
 fprintf('Mortar matrix D times z: %g\n', max(reshape(abs(DDz_lim-DDz_alg),[],1)));
 fprintf('Transpose of mortar matrix M times z: %g\n', max(reshape(abs(DMTz_lim-DMTz_alg),[],1)));
 fprintf('weighted gap: %g\n', max(reshape(abs(Dweight_gap_lim-Dweight_gap_alg),[],1)));
+
+%{
+figure;
+subplot(3,1,1);
+plot(abs(DDz_lim(:)-DDz_alg(:)), 'b');
+title('Rozdíl: \mathbf{D} \cdot \vec{z} (FD vs algebraicky)');
+ylabel('Chyba');
+grid on;
+
+subplot(3,1,2);
+plot(abs(DMTz_lim(:)-DMTz_alg(:)), 'r');
+title('Rozdíl: \mathbf{M}^\top \cdot \vec{z} (FD vs algebraicky)');
+ylabel('Chyba');
+grid on;
+%}
+
+max_abs_diff_DDz = max(abs(DDz_lim - DDz_alg), [], 1);
+max_abs_diff_DMTz = max(abs(DMTz_lim - DMTz_alg), [], 1);
+max_abs_diff_wgap = max(abs(Dweight_gap_lim - Dweight_gap_alg), [], 1);
+max_abs_diff_T1 = max(abs(Dt1_alg-Dt1_lim), [], 1);
+max_abs_diff_T2 = max(abs(Dt2_alg-Dt2_lim), [], 1);
+
+
+figure(1);           % vytvoří nebo přepne na figure s ID 1
+set(gcf, 'Color', 'w');  % nastaví bílou barvu pozadí aktuálního okna
+% Horní subplot – DDz rozdíl
+subplot(2,1,1);
+semilogy(max_abs_diff_DDz, 'o-', 'LineWidth', 1.5, 'MarkerSize', 4, 'Color', [0.2 0.4 0.8], 'MarkerFaceColor', [0.2 0.4 0.8]);
+grid on;
+set(gca, 'FontSize', 11);  % skryje popisky X osy
+
+% Dolní subplot – DMTz rozdíl
+subplot(2,1,2);
+semilogy(max_abs_diff_DMTz, 'o-', 'LineWidth', 1.5, 'MarkerSize', 4, 'Color', [0.8 0.3 0.2], 'MarkerFaceColor', [0.8 0.3 0.2]);
+grid on;
+set(gca, 'FontSize', 11);
+
+figure(2);           % vytvoří nebo přepne na figure s ID 1
+set(gcf, 'Color', 'w');  % nastaví bílou barvu pozadí aktuálního okna
+semilogy(max_abs_diff_wgap, 'o-', 'LineWidth', 1.5, 'MarkerSize', 4, 'Color', [0.2 0.4 0.8], 'MarkerFaceColor', [0.2 0.4 0.8]);
+grid on;
+set(gca, 'FontSize', 11);
+
+figure(3);           % vytvoří nebo přepne na figure s ID 1
+set(gcf, 'Color', 'w');  % nastaví bílou barvu pozadí aktuálního okna
+% Horní subplot – DDz rozdíl
+subplot(2,1,1);
+semilogy(max_abs_diff_T1, 'o-', 'LineWidth', 1.5, 'MarkerSize', 4, 'Color', [0.2 0.4 0.8], 'MarkerFaceColor', [0.2 0.4 0.8]);
+grid on;
+set(gca, 'FontSize', 11);  % skryje popisky X osy
+
+% Dolní subplot – DMTz rozdíl
+subplot(2,1,2);
+semilogy(max_abs_diff_T2, 'o-', 'LineWidth', 1.5, 'MarkerSize', 4, 'Color', [0.8 0.3 0.2], 'MarkerFaceColor', [0.8 0.3 0.2]);
+grid on;
+set(gca, 'FontSize', 11);
 
